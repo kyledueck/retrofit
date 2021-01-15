@@ -104,9 +104,15 @@ public final class RetrofitTest {
 
   interface Extending extends CallMethod {}
 
-  interface TypeParam<T> {}
+  interface TypeParam<RequestType, ReturnType> {
+    ReturnType method(RequestType foo);
+  }
 
-  interface ExtendingTypeParam extends TypeParam<String> {}
+  interface ExtendingTypeParam extends TypeParam<String, Call<ResponseBody>> {
+    @GET("/")
+    @Override
+    Call<ResponseBody> method(@Query("foo") String foo);
+  }
 
   interface StringService {
     @GET("/")
@@ -211,20 +217,14 @@ public final class RetrofitTest {
   }
 
   @Test
-  public void interfaceWithExtendWithTypeParameterThrows() {
+  public void interfaceWithExtendWithTypeParameter() throws IOException {
     Retrofit retrofit = new Retrofit.Builder().baseUrl(server.url("/")).build();
 
     server.enqueue(new MockResponse().setBody("Hi"));
 
-    try {
-      retrofit.create(ExtendingTypeParam.class);
-      fail();
-    } catch (IllegalArgumentException e) {
-      assertThat(e)
-          .hasMessage(
-              "Type parameters are unsupported on retrofit2.RetrofitTest$TypeParam "
-                  + "which is an interface of retrofit2.RetrofitTest$ExtendingTypeParam");
-    }
+    ExtendingTypeParam extending = retrofit.create(ExtendingTypeParam.class);
+    String result = extending.method("request").execute().body().string();
+    assertEquals("Hi", result);
   }
 
   @Test
